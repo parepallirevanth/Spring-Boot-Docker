@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-springboot-stg
+  labels:
+    app: mysql-springboot-stg
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: springboot-stg
+  strategy:
+    type: Recreate
+  template:
+    metadata: 
+      labels: 
+        app: springboot-stg
+    spec:
+      affinity:
+        nodeAffinity:
+          requireDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: ###Node pool
+                operator: In 
+                values:
+                - medium-2-pool
+      containers:
+      - name: mysql-springboot
+        image: mysql:5.6
+        resources:
+          requests:
+            cpu: "10m"
+        env:
+        - name: MYSQL_USER
+          value: admin
+        - name: MYSQL_PASSWORD
+          value: Reva@1998
+        - name: MYSQL_DATABASE
+          value: springboot
+        ports:
+        - containerPort: 3306
+          name: mysql
+        volumeMounts:
+        - name: mysql-persistent-storage
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-persistent-storage
+        persistentVolumeClaim:
+          claimName: mysql-pv-springboot-stg
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: springboot-db-stg
+spec:
+  type: ClusterIP
+  ports :
+  - port: 3306
+    targetPort: 3306
+    protocol: TCP
+    name: mysqldb-port
+  selector:
+    app: springboot-stg
+
+---
+apiVersion: v1
+kind: persistentVolumeClaim
+metadata:
+  name: mysql-pv-springboot-stg
+  labels:
+    app: mysql-springboot-stg
+spec:
+  accessMode:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
